@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+
+bake_task cluster_id
+function cluster_id () {
+  CLUSTER_ID="${CLUSTER_ID:-$(aws --profile=relay emr list-clusters --active | grep Id | cut -d: -f2 | cut -d'"' -f2)}"
+  echo $CLUSTER_ID
+}
+
+bake_task lein_task
+function lein_task () {
+  lein with-profile +1.6,+spark-1.5 "$@"
+}
+
+bake_task copy_uberjar_to_s3
+function copy_uberjar_to_s3 () {
+  aws --profile=relay s3 cp target/spark-clj-sandbox-0.1.0-SNAPSHOT-standalone.jar s3://com.relaynetwork/jc/ 
+}
+
+bake_task build_uberjar
+function build_uberjar () {
+  lein_task clean && lein uberjar
+}
+
+bake_task build_and_copy_to_s3
+function build_and_copy_to_s3 () {
+  build_uberjar && copy_uberjar_to_s3
+}
+
+bake_task build_and_submit
+function build_and_submit () {
+  build_uberjar && copy_uberjar_to_s3 && submit_steps
+}
+
+bake_task cluster_public_dns
+function cluster_public_dns () {
+  CLUSTER_PUBLIC_DNS="${CLUSTER_PUBLIC_DNS:-$(aws --profile=relay emr describe-cluster --cluster-id "$(cluster_id)" | grep MasterPublicDnsName | cut -d: -f2- | cut -f2 -d'"')}"
+  echo $CLUSTER_PUBLIC_DNS
+}
+
+bake_task cluster_ssh_master 
+function cluster_ssh_master () {
+  ssh "hadoop@$(cluster_public_dns)"
+}
+
+bake_task submit_steps
+function submit_steps () {
+  aws --profile=relay emr add-steps --cluster-id "$(cluster_id)" --steps file://./steps.json
+}
