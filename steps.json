@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Download Uberjar",
+    "Type": "CUSTOM_JAR",
+    "Jar": "s3://elasticmapreduce/libs/script-runner/script-runner.jar",
+    "Args": ["s3://com.relaynetwork/jc/download-uberjar.sh"],
+    "ActionOnFailure": "CANCEL_AND_WAIT"
+  },
+  {
+    "Name": "Launch Spark App",
+    "Type": "SPARK",
+    "Args": ["--class", "spark_clj_sandbox.core", "/mnt/spark-clj-sandbox-0.1.0-SNAPSHOT-standalone.jar"],
+    "ActionOnFailure": "CONTINUE"
+  }
+]
